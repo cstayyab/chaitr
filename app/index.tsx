@@ -31,6 +31,8 @@ export default function Chat() {
     forceFetch: refetchSettings,
   } = useStoredValue<ISettings>(SETTINGS_STORAGE);
 
+  const [isTyping, setIsTyping] = useState(false);
+
   const messages = useMemo(() => {
     if (!isLoadingStoredMessages) {
       return storedMessages;
@@ -51,7 +53,7 @@ export default function Chat() {
   );
 
   const onSend = useCallback(
-    (newMessages: IMessage[] = []) => {
+    async (newMessages: IMessage[] = []) => {
       const updatedMessages = GiftedChat.append(messages, newMessages);
       saveMessages(updatedMessages);
 
@@ -73,7 +75,8 @@ export default function Chat() {
         saveMessages(messagesWithError);
         return;
       }
-
+      setIsTyping(true);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       axios
         .post(endpoint, {
           message: userMessage,
@@ -118,7 +121,9 @@ export default function Chat() {
             errorMessage,
           ]);
           saveMessages(messagesWithError);
-        });
+        }).finally(() => {
+          setIsTyping(false);
+        })
     },
     [messages, settings]
   );
@@ -147,6 +152,7 @@ export default function Chat() {
           messages={messages}
           onSend={(msgs) => onSend(msgs)}
           user={{ _id: 1 }}
+          isTyping={isTyping}
           renderUsernameOnMessage
         />
       )}
