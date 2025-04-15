@@ -1,6 +1,11 @@
 {
   "expo": {
-    "name": "chaitr",
+    "name": "Chaitr",
+    "githubUrl": "https://github.com/CSTayyab/chaitr",
+    "backgroundColor": "#000000",
+    "developmentClient": {
+      "silentLaunch": true,
+    },
     "slug": "chaitr",
     "version": "1.0.0",
     "orientation": "portrait",

@@ -9,9 +9,14 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import { useColorScheme } from "@/components/useColorScheme";
-import { Slot } from "expo-router";
+import { Link, Slot } from "expo-router";
+import { Stack } from "expo-router/stack";
 
 import "../global.css";
+import { StatusBar } from "expo-status-bar";
+import { SettingsIcon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
+import { TouchableHighlight } from "react-native";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -61,7 +66,20 @@ function RootLayoutNav() {
   return (
     <GluestackUIProvider mode={colorScheme === "dark" ? "dark" : "light"}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Slot />
+        <StatusBar style={colorScheme === "dark" ? "dark" : "light"} />
+        <Stack screenOptions={{
+            headerShown: true,
+            headerTitleAlign: "left",
+            headerTintColor: colorScheme === "dark" ? "white" : "black",
+            headerStyle: {
+              backgroundColor: colorScheme === "dark" ? "black" : "white",
+            },
+          }}>
+          <Stack.Screen name="index" options={{title: "Chaitr", headerRight: () => {
+            return <Link href={'/settings'}><Text>Settings</Text></Link>
+          }}} />
+          <Stack.Screen name="settings" options={{title: "Settings"}} />
+        </Stack>
       </ThemeProvider>
     </GluestackUIProvider>
   );

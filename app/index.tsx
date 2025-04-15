@@ -1,90 +1,155 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Box } from "@/components/ui/box";
-import { useState, useCallback, useEffect } from 'react';
-import { GiftedChat, IMessage } from 'react-native-gifted-chat';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import { useState, useCallback, useEffect } from "react";
+import { GiftedChat, IMessage } from "react-native-gifted-chat";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
 import { Spinner } from "@/components/ui/spinner";
+import { SettingsIcon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
+import { MESSAGES_STORAGE, SETTINGS_STORAGE } from "@/constants/Storage";
+import { useStoredValue } from "@/hooks/useStoredValue";
+import { ISettings } from "./settings";
+import { Alert, AlertIcon, AlertText } from "@/components/ui/alert";
+import { TouchableHighlight } from "react-native";
+import { Link, useFocusEffect } from "expo-router";
 
 const AI_CHAT_USER = {
   _id: 2,
-  name: 'Chaitr',
-}
+  name: "Chaitr",
+};
 
-const STORAGE_KEY = 'chaitr_messages';
+export default function Chat() {
+  const {
+    value: storedMessages,
+    setValue: setStoredMessaged,
+    loading: isLoadingStoredMessages,
+  } = useStoredValue<IMessage[]>(MESSAGES_STORAGE, []);
+  const {
+    value: settings,
+    loading: isLoadingSettings,
+    forceFetch: refetchSettings,
+  } = useStoredValue<ISettings>(SETTINGS_STORAGE);
 
-export default function Home() {
-  const [messages, setMessages] = useState<IMessage[]>([]);
-  const [loading, setLoading] = useState(false);
+  const messages = useMemo(() => {
+    if (!isLoadingStoredMessages) {
+      return storedMessages;
+    }
+  }, [storedMessages, isLoadingStoredMessages]);
 
-  // Load messages from storage when component mounts
-  useEffect(() => {
-    loadMessages();
-  }, []);
+  useFocusEffect(useCallback(refetchSettings, []));
 
-  const loadMessages = async () => {
-    try {
-      const savedMessages = await AsyncStorage.getItem(STORAGE_KEY);
-      if (savedMessages) {
-        setMessages(JSON.parse(savedMessages));
+  const saveMessages = useCallback(
+    async (newMessages: IMessage[]) => {
+      try {
+        await setStoredMessaged(newMessages);
+      } catch (error) {
+        console.error("Error saving messages:", error);
       }
-    } catch (error) {
-      console.error('Error loading messages:', error);
-    }
-  };
+    },
+    [setStoredMessaged]
+  );
 
-  const saveMessages = async (newMessages: IMessage[]) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newMessages));
-    } catch (error) {
-      console.error('Error saving messages:', error);
-    }
-  };
+  const onSend = useCallback(
+    (newMessages: IMessage[] = []) => {
+      const updatedMessages = GiftedChat.append(messages, newMessages);
+      saveMessages(updatedMessages);
 
-  const onSend = useCallback((newMessages: IMessage[] = []) => {
-    const updatedMessages = GiftedChat.append(messages, newMessages);
-    setMessages(updatedMessages);
-    saveMessages(updatedMessages);
-    
-    const userMessage = newMessages[0].text;
-    setLoading(true);
-
-    axios
-      .post('http://YOUR-IP-ADDRESS:3000/chat', { message: userMessage })
-      .then(res => {
-        const reply: IMessage = {
-          _id: Date.now().toString(),
-          text: res.data.reply,
-          createdAt: new Date(),
-          user: AI_CHAT_USER,
-        };
-        const messagesWithReply = GiftedChat.append(updatedMessages, [reply]);
-        setMessages(messagesWithReply);
-        saveMessages(messagesWithReply);
-      })
-      .catch(() => {
+      const userMessage = newMessages[0].text;
+      const endpoint = `http://${settings?.ipAddress}:${settings?.port}/chat`;
+      console.log("Sending message to:", endpoint);
+      console.log("User message:", userMessage);
+      if (!settings?.ipAddress || !settings?.port) {
         const errorMessage: IMessage = {
           _id: Date.now().toString(),
-          text: "Error: Couldn't connect to backend.",
+          text: "Error: IP Address or Port is not set.",
           createdAt: new Date(),
           user: AI_CHAT_USER,
+          system: true,
         };
-        const messagesWithError = GiftedChat.append(updatedMessages, [errorMessage]);
-        setMessages(messagesWithError);
+        const messagesWithError = GiftedChat.append(updatedMessages, [
+          errorMessage,
+        ]);
         saveMessages(messagesWithError);
-      })
-      .finally(() => setLoading(false));
-  }, [messages]);
+        return;
+      }
+
+      axios
+        .post(endpoint, {
+          message: userMessage,
+        })
+        .then((res) => {
+          if (res.data.reply) {
+            const reply: IMessage = {
+              _id: Date.now().toString(),
+              text: res.data.reply,
+              createdAt: new Date(),
+              user: AI_CHAT_USER,
+            };
+            const messagesWithReply = GiftedChat.append(updatedMessages, [
+              reply,
+            ]);
+            saveMessages(messagesWithReply);
+          } else if (res.data.error) {
+            const errorMessage: IMessage = {
+              _id: Date.now().toString(),
+              text: res.data.error,
+              createdAt: new Date(),
+              user: AI_CHAT_USER,
+              system: true,
+            };
+            const messagesWithError = GiftedChat.append(updatedMessages, [
+              errorMessage,
+            ]);
+            saveMessages(messagesWithError);
+          }
+        })
+        .catch((err) => {
+          console.error("Error sending message:", err);
+          console.log(err);
+          const errorMessage: IMessage = {
+            _id: Date.now().toString(),
+            text: "Error: Couldn't connect to backend.",
+            createdAt: new Date(),
+            user: AI_CHAT_USER,
+            system: true,
+          };
+          const messagesWithError = GiftedChat.append(updatedMessages, [
+            errorMessage,
+          ]);
+          saveMessages(messagesWithError);
+        });
+    },
+    [messages, settings]
+  );
+
+  if (!isLoadingSettings && (!settings?.ipAddress || !settings?.port)) {
+    return (
+      <Box className="flex-1 justify-center items-center">
+        <Alert action="muted" variant="solid" focusable={true}>
+          <AlertIcon as={SettingsIcon} />
+          <AlertText>
+            Please set the Backend IP Address and Port from Settings!
+          </AlertText>
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
-    <Box className="flex-1 bg-transparent h-[100vh]">
-      {loading && <Spinner size="large" color={'blue'} />}
-      <GiftedChat
-        messages={messages}
-        onSend={msgs => onSend(msgs)}
-        user={{ _id: 1 }}
-        renderUsernameOnMessage
-      />
+    <Box className="flex-1 bg-white dark:bg-black">
+      {isLoadingStoredMessages || isLoadingSettings ? (
+        <Box className="flex-1 justify-center items-center">
+          <Spinner />
+        </Box>
+      ) : (
+        <GiftedChat
+          messages={messages}
+          onSend={(msgs) => onSend(msgs)}
+          user={{ _id: 1 }}
+          renderUsernameOnMessage
+        />
+      )}
     </Box>
   );
 }
