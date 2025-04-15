@@ -17,6 +17,7 @@ import { StatusBar } from "expo-status-bar";
 import { SettingsIcon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { TouchableHighlight } from "react-native";
+import { HStack } from "@/components/ui/hstack";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -67,18 +68,36 @@ function RootLayoutNav() {
     <GluestackUIProvider mode={colorScheme === "dark" ? "dark" : "light"}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <StatusBar style={colorScheme === "dark" ? "dark" : "light"} />
-        <Stack screenOptions={{
+        <Stack
+          screenOptions={{
             headerShown: true,
             headerTitleAlign: "left",
             headerTintColor: colorScheme === "dark" ? "white" : "black",
             headerStyle: {
               backgroundColor: colorScheme === "dark" ? "black" : "white",
             },
-          }}>
-          <Stack.Screen name="index" options={{title: "Chaitr", headerRight: () => {
-            return <Link href={'/settings'}><Text>Settings</Text></Link>
-          }}} />
-          <Stack.Screen name="settings" options={{title: "Settings"}} />
+          }}
+        >
+          <Stack.Screen
+            name="index"
+            options={{
+              title: "Chaitr",
+              headerRight: () => {
+                return (
+                  <HStack className="gap-2">
+                    <Link href={"/logs"}>
+                      <Text>Logs</Text>
+                    </Link> <Text>|</Text>
+                    <Link href={"/settings"}>
+                      <Text>Settings</Text>
+                    </Link>
+                  </HStack>
+                );
+              },
+            }}
+          />
+          <Stack.Screen name="settings" options={{ title: "Settings" }} />
+          <Stack.Screen name="logs" options={{ title: "Logs" }} />
         </Stack>
       </ThemeProvider>
     </GluestackUIProvider>

@@ -7,7 +7,7 @@ import axios from "axios";
 import { Spinner } from "@/components/ui/spinner";
 import { SettingsIcon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { MESSAGES_STORAGE, SETTINGS_STORAGE } from "@/constants/Storage";
+import { ERRORS_STORAGE, MESSAGES_STORAGE, SETTINGS_STORAGE } from "@/constants/Storage";
 import { useStoredValue } from "@/hooks/useStoredValue";
 import { ISettings } from "./settings";
 import { Alert, AlertIcon, AlertText } from "@/components/ui/alert";
@@ -30,6 +30,12 @@ export default function Chat() {
     loading: isLoadingSettings,
     forceFetch: refetchSettings,
   } = useStoredValue<ISettings>(SETTINGS_STORAGE);
+
+  const {
+    value: storedLogs,
+    setValue: setStoredLogs,
+    loading: isLoadingStoredLogs,
+  } = useStoredValue<any[]>(ERRORS_STORAGE, []);
 
   const [isTyping, setIsTyping] = useState(false);
 
@@ -110,6 +116,7 @@ export default function Chat() {
         .catch((err) => {
           console.error("Error sending message:", err);
           console.log(err);
+          setStoredLogs([...(storedLogs || []), {url: endpoint, error: err, message: userMessage}]);
           const errorMessage: IMessage = {
             _id: Date.now().toString(),
             text: "Error: Couldn't connect to backend.",

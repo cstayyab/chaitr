@@ -48,7 +48,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "./plugins/withClearTextTraffic"
     ],
     "experiments": {
       "typedRoutes": true
